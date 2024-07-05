@@ -42,29 +42,29 @@ jobs:
 
       - name: Run VMware Chap Analyzer
         run: |
-            #!/bin/bash
-            set +e
-            
-            directory="$GITHUB_WORKSPACE"
-            ulimit -c unlimited
-            
-            find "$directory" -name "*.so" -exec sh -c '
-                for so_file do
-                    "$so_file"
-                done
-            ' sh {} +
-            
-            commands=("count" "describe" "dump" "enumerate" "explain" "list" "show" "summarize")
-            sub_commands=("allocations" "anchored" "anchorpoints" "externalanchored" "externalanchorpoints" "free" "inaccessible" "leaked" "readonly" "registeranchored" "registeranchorpoints" "rxonly" "stackanchorpoints")
-            
-            for core_file in /var/lib/apport/coredump/*; do
-                if [ -f "$core_file" ]; then
-                    for command in "${commands[@]}"; do
-                        for sub_command in "${sub_commands[@]}"; do
-                            echo "$command + $sub_command"
-                            /tmp/chap/build-chap/chap "$core_file" <<EOF 2>/dev/null
-                            $command $sub_command
-            EOF
-                        done
-                fi
-            done
+          set +e
+          
+          directory="$GITHUB_WORKSPACE"
+          ulimit -c unlimited
+          
+          find "$directory" -name "*.so" -exec sh -c '
+              for so_file do
+                  "$so_file"
+              done
+          ' sh {} +
+          
+          commands=("count" "describe" "dump" "enumerate" "explain" "list" "show" "summarize")
+          sub_commands=("allocations" "anchored" "anchorpoints" "externalanchored" "externalanchorpoints" "free" "inaccessible" "leaked" "readonly" "registeranchored" "registeranchorpoints" "rxonly" "stackanchorpoints")
+          
+          for core_file in /var/lib/apport/coredump/*; do
+              if [ -f "$core_file" ]; then
+                  for command in "${commands[@]}"; do
+                      for sub_command in "${sub_commands[@]}"; do
+                          echo "$command + $sub_command"
+                          /tmp/chap/build-chap/chap "$core_file" <<EOF 2>/dev/null
+                          $command $sub_command
+          EOF
+                      done
+                  done
+              fi
+          done
