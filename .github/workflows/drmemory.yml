@@ -1,0 +1,81 @@
+name: Run Dr. Memory
+
+on:
+  push:
+
+jobs:
+  run-drmemory:
+    name: '${{ matrix.os }}'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4 
+        with:
+          ref: 67d11619d506ccb695ecfe9fd647e150e93715ed
+
+      - name: Install dependencies for project
+        run: | 
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+          
+      - name: Build repository 
+        run: | 
+          export CC=gcc && export CXX=g++ && export CFLAGS="-g -fno-inline -fno-omit-frame-pointer" && export LDFLAGS=""
+          ./script/build.sh build
+        continue-on-error: true 
+
+      - name: Install Dr. Memory
+        if: runner.os == 'Linux'
+        run: | 
+          sudo apt-get update
+          sudo apt-get install -y libunwind8
+          wget -P /tmp/ https://github.com/DynamoRIO/drmemory/releases/download/release_2.6.0/DrMemory-Linux-2.6.0.tar.gz && tar -xzf /tmp/DrMemory-Linux-2.6.0.tar.gz -C /tmp/ && echo "/tmp/DrMemory-Linux-2.6.0/bin" >> $GITHUB_PATH
+           
+      - name: Generate Logs folder
+        run: mkdir logs
+
+      - name: Run Dr. Memory
+        run: |
+          #!/bin/bash
+          set +e 
+
+          echo "=========[Dr Memory Service Started!]========="
+
+          DIRECTORY=.
+
+          is_executable() {
+            local file="$1"
+            if file "$file" | grep -q 'ELF 64-bit'; then
+              return 0
+            else
+              return 1
+            fi
+          }
+
+          run_with_drmemory() {
+            local executable="$1"
+            local log_dir="./logs"
+            timeout 30s drmemory -logdir "./logs" -- "$executable"
+            local exit_status=$?
+          }
+
+          find "$DIRECTORY" -type f -executable | while read -r file; do
+            if is_executable "$file"; then
+              run_with_drmemory "$file"
+              echo ""
+              echo ""
+              echo ""
+            fi
+          done
+
+          echo "=========[Dr. Memory service finished]========="
+  
+      - name: Upload Dr. Memory reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: drmemory-report-${{ github.event.repository.name }}-on-${{ matrix.os }}
+          path: './logs/*'
