@@ -1,0 +1,86 @@
+name: Run DynamoRIO
+
+on:
+  push:
+
+jobs:
+  run-drmemory:
+    name: '${{ matrix.os }}'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4 
+        with:
+          ref: 67d11619d506ccb695ecfe9fd647e150e93715ed
+
+      - name: Install dependencies for project
+        run: | 
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+          
+      - name: Build repository 
+        run: ./script/build.sh build
+
+      - name: Install DynamoRIO
+        if: runner.os == 'Linux'
+        run: | 
+          sudo apt-get update
+          sudo apt-get install -y libunwind8
+          wget -P /tmp/ https://github.com/DynamoRIO/dynamorio/releases/download/release_10.0.0/DynamoRIO-Linux-10.0.0.tar.gz && tar -xzf /tmp/DynamoRIO-Linux-10.0.0.tar.gz -C /tmp/
+           
+      - name: Run DynamoRIO
+        run: |
+          export DYNAMORIO_HOME="/tmp/DynamoRIO-Linux-10.0.0"
+          export GITHUB_PATH="$DYNAMORIO_HOME/bin64:$DYNAMORIO_HOME/tools/bin64:$GITHUB_PATH"
+          export LD_LIBRARY_PATH="$DYNAMORIO_HOME/lib64:$LD_LIBRARY_PATH"
+          #!/bin/bash
+          set +e 
+
+          echo "=========[DynamoRIO Service Started!]========="
+
+          DIRECTORY=.
+
+          is_executable() {
+            local file="$1"
+            if file "$file" | grep -q 'ELF 64-bit'; then
+              return 0
+            else
+              return 1
+            fi
+          }
+
+          run_with_dynrio_coverage() {
+            local executable="$1"
+            local log_dir="./logs_coverage"
+            mkdir -p "$log_dir"
+            $DYNAMORIO_HOME/bin64/drrun -t drcov -logdir "$log_dir" -dump_text -- "$executable"
+            local exit_status=$?
+            
+            if [ $exit_status -eq 124 ]; then
+              echo "Execution timed out after 45 seconds: $executable"
+            fi
+
+            for log_file in "$log_dir"/drcov.*.log; do
+              $DYNAMORIO_HOME/tools/bin64/drcov2lcov -input "$log_file" -src_filter "$log_dir"
+            done
+          }
+
+          find "$DIRECTORY" -type f -executable | while read -r file; do
+            if is_executable "$file"; then
+              run_with_dynrio_coverage "$file"
+              echo ""
+              echo ""
+            fi
+          done
+
+          echo "=========[DynamoRIO service finished]========="
+  
+      - name: Upload Dr. Memory reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: drmemory-report-${{ github.event.repository.name }}-on-${{ matrix.os }}
+          path: './logs_coverage/*'
