@@ -77,5 +77,5 @@ jobs:
       - name: Upload Dr. Memory reports
         uses: actions/upload-artifact@v4
         with:
-          name: drmemory-report-${{ github.event.repository.name }}-on-${{ matrix.os }}
+          name: drmemory-report-${{ github.event.repository.name }}-on-${{ matrix.os }}-from_branch_${{ github.ref_name }}
           path: './logs/*'
