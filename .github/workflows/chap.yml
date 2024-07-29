@@ -43,7 +43,8 @@ jobs:
       - name: Run VMware Chap Analyzer
         run: |
           set +e
-          
+
+          mkdir -p chap_results
           directory="$GITHUB_WORKSPACE"
           ulimit -c unlimited
           
@@ -62,9 +63,15 @@ jobs:
                       for sub_command in "${sub_commands[@]}"; do
                           echo "$command + $sub_command"
                           /tmp/chap/build-chap/chap "$core_file" <<EOF 2>/dev/null
-                          $command $sub_command
+                          $command $sub_command > "./chap_results/${core_file_chap_results}.txt"
           EOF
                       done
                   done
               fi
           done
+          
+      - name: Upload Chap reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: chap-report-${{ github.event.repository.name}}-on-${{ matrix.os }}-from_branch_${{ github.ref_name }}
+          path: './chap_results/*'
