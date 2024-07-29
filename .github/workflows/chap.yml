@@ -59,11 +59,12 @@ jobs:
           
           for core_file in /var/lib/apport/coredump/*; do
               if [ -f "$core_file" ]; then
+                  output_file="./chap_results/${core_file##*/}.txt"
+                  
                   for command in "${commands[@]}"; do
                       for sub_command in "${sub_commands[@]}"; do
-                          echo "$command + $sub_command"
-                          /tmp/chap/build-chap/chap "$core_file" <<EOF 2>/dev/null
-                          $command $sub_command > "./chap_results/${core_file_chap_results}.txt"
+                          /tmp/chap/build-chap/chap "$core_file" <<EOF >>"$output_file" 2>/dev/null
+          $command $sub_command
           EOF
                       done
                   done
