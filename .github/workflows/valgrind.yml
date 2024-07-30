@@ -35,7 +35,6 @@ jobs:
         run: |
           #!/bin/bash
           set +e 
-
           mkdir -p valgrind_reports
           
           is_executable() {
@@ -46,25 +45,20 @@ jobs:
               return 1
             fi
           }
-
           run_with_valgrind() {
             local executable="$1"
             local tool="$2"
             local tool_name="$3"
             local valgrind_options="--read-inline-info=yes --trace-children=yes -v -v"
-
             if [ "$tool" == "memcheck" ]; then
               valgrind_options+=" --leak-check=full --show-leak-kinds=all --track-origins=yes"
             fi
-
-            timeout 60s valgrind --tool="$tool" $valgrind_options "$executable"
+            timeout 60s valgrind --tool="$tool" $valgrind_options --log-file="./valgrind_reports/$(basename "$file")-${tool_name}_valgrind_report.txt" "$executable"
             local exit_status=$?
-
             if [ $exit_status -eq 124 ]; then
               return
             fi
           }
-
           tools=(
             "memcheck Memcheck"
             "cachegrind Cachegrind"
@@ -77,13 +71,11 @@ jobs:
             "none None"
             "exp-bbv exp-bbv"
           )
-
           find . -type f -executable | while read -r file; do
             if is_executable "$file"; then
               for tool_info in "${tools[@]}"; do
                 tool=(${tool_info})
-                output_file="valgrind_reports/${file}-${tool[1]}_klee_report.txt"
-                run_with_valgrind "$file" "${tool[0]}" "${tool[1]}" | tee -a "$output_file"
+                run_with_valgrind "$file" "${tool[0]}" "${tool[1]}"
               done
             fi
           done
