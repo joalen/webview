@@ -36,7 +36,7 @@ jobs:
           #!/bin/bash
           set +e 
 
-          echo "<----------------------Start Valgrind Service---------------------->"
+          mkdir -p valgrind_reports
           
           is_executable() {
             local file="$1"
@@ -62,10 +62,6 @@ jobs:
 
             if [ $exit_status -eq 124 ]; then
               return
-            elif [ $exit_status -ne 0 ]; then
-              ((success += 1))
-            else
-              ((fails += 1))
             fi
           }
 
@@ -86,11 +82,14 @@ jobs:
             if is_executable "$file"; then
               for tool_info in "${tools[@]}"; do
                 tool=(${tool_info})
-                echo "" 
-                echo "" 
-                echo ""
-                echo "========Valgrind tool: ${tool[1]}========"
-                run_with_valgrind "$file" "${tool[0]}" "${tool[1]}"
+                output_file="valgrind_reports/${file}-${tool[1]}_klee_report.txt"
+                run_with_valgrind "$file" "${tool[0]}" "${tool[1]}" | tee -a "$output_file"
               done
             fi
           done
+          
+      - name: Upload Valgrind reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: valgrind-report-${{ github.event.repository.name}}-on-${{ matrix.os }}-from_branch_${{ github.ref_name }}
+          path: './valgrind_reports/*'
