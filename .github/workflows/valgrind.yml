@@ -30,7 +30,11 @@ jobs:
         run: | 
           sudo apt-get update
           sudo apt-get install -y valgrind
-      
+
+      - name: Disable Address Space Randomization
+        if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.randomize_va_space=0
+        
       - name: Run Valgrind
         run: |
           #!/bin/bash
