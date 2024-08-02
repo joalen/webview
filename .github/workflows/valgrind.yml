@@ -34,7 +34,11 @@ jobs:
       - name: Disable Address Space Randomization
         if: runner.os == 'Linux'
         run: sudo sysctl -w kernel.randomize_va_space=0
-        
+      
+      - name: Disable swapping 
+        if: runner.os == 'Linux' 
+        run: sudo swapoff -a
+
       - name: Run Valgrind
         run: |
           #!/bin/bash
@@ -49,20 +53,36 @@ jobs:
               return 1
             fi
           }
+          
           run_with_valgrind() {
             local executable="$1"
             local tool="$2"
             local tool_name="$3"
-            local valgrind_options="--read-inline-info=yes --trace-children=yes -v -v"
+            local valgrind_options="--read-inline-info=yes --trace-children=yes -v"
             if [ "$tool" == "memcheck" ]; then
               valgrind_options+=" --leak-check=full --show-leak-kinds=all --track-origins=yes"
+            elif [ "$tool" == "cachegrind" ]; then
+              valgrind_options+=" --cachegrind-out-file=./valgrind_reports/$(basename "$executable")-${tool_name}_cachegrind_report.txt --cache-sim=yes --branch-sim=yes"
+            elif [ "$tool" == "callgrind" ]; then
+              valgrind_options+=" --dump-instr=yes --collect-jumps=yes --callgrind-out-file=./valgrind_reports/$(basename "$executable")-${tool_name}_callgrind_report.txt"
+            elif [ "$tool" == "massif" ]; then
+              valgrind_options+=" --massif-out-file=./valgrind_reports/$(basename "$executable")-${tool_name}_massif_report.txt"
+            elif [ "$tool" == "dhat" ]; then
+              valgrind_options+=" --dhat-out-file=./valgrind_reports/$(basename "$executable")-${tool_name}_dhat_report.txt"
+            elif [ "$tool" == "bbv" ]; then
+              valgrind_options+=" --bb-out-file=./valgrind_reports/$(basename "$executable")-${tool_name}_bbv_report.txt"
+            elif [ "$tool" == "lackey" ]; then
+              valgrind_options+=" --trace-mem=yes --trace-superblocks=yes"
+            elif [ "$tool" == "drd" ]; then
+              valgrind_options+=" --check-stack-var=yes --trace-barrier=yes --trace-cond=yes --trace-fork-join=yes --trace-mutex=yes --trace-rwlock=yes --trace-semaphore=yes"
             fi
-            timeout 60s valgrind --tool="$tool" $valgrind_options --log-file="./valgrind_reports/$(basename "$file")-${tool_name}_valgrind_report.txt" "$executable"
+            timeout 60s valgrind --tool="$tool" $valgrind_options --log-file=./valgrind_reports/$(basename "$executable")-${tool_name}_valgrind_report.txt --fair-sched=try --read-var-info=yes "$executable"
             local exit_status=$?
             if [ $exit_status -eq 124 ]; then
               return
             fi
           }
+          
           tools=(
             "memcheck Memcheck"
             "cachegrind Cachegrind"
@@ -75,6 +95,7 @@ jobs:
             "none None"
             "exp-bbv exp-bbv"
           )
+          
           find . -type f -executable | while read -r file; do
             if is_executable "$file"; then
               for tool_info in "${tools[@]}"; do
