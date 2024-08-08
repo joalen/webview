@@ -65,7 +65,7 @@ jobs:
           run_with_drmemory() {
             local executable="$1"
             local log_dir="./logs"
-            timeout 30s drmemory -logdir "./logs" -- "$executable"
+            timeout 30s drmemory -logdir "./drmem_logs" -- "$executable"
             local exit_status=$?
           }
 
