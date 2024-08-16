@@ -43,46 +43,7 @@ jobs:
 
       - name: Make parent folder
         run: mkdir -p dynamoriologs
-        
-      - name: Run DynamoRIO (Code Coverage)
-        run: |
-          export DYNAMORIO_HOME="/tmp/DynamoRIO-Linux-10.0.0"
-          export GITHUB_PATH="$DYNAMORIO_HOME/bin64:$DYNAMORIO_HOME/tools/bin64:$GITHUB_PATH"
-          export LD_LIBRARY_PATH="$DYNAMORIO_HOME/lib64:$LD_LIBRARY_PATH"
-          #!/bin/bash
-          set +e 
-          echo "=========[DynamoRIO Code Coverage Service Started!]========="
-          DIRECTORY=.
-          is_executable() {
-            local file="$1"
-            if file "$file" | grep -q 'ELF 64-bit'; then
-              return 0
-            else
-              return 1
-            fi
-          }
-          run_with_dynrio_coverage() {
-            local executable="$1"
-            local log_dir="./dynamoriologs/logs_coverage"
-            mkdir -p "$log_dir"
-            $DYNAMORIO_HOME/bin64/drrun -t drcov -logdir "$log_dir" -dump_text -- "$executable"
-            local exit_status=$?
-            
-            for log_file in "$log_dir"/drcov.*.log; do
-              $DYNAMORIO_HOME/tools/bin64/drcov2lcov -input "$log_file" -src_filter "$log_dir"
-            done
-          }
-          
-          find "$DIRECTORY" -type f -executable | while read -r file; do
-            if is_executable "$file"; then
-              run_with_dynrio_coverage "$file"
-              echo ""
-              echo ""
-            fi
-          done
-          find "$log_dir" -type f -size 0 -delete
-          echo "=========[DynamoRIO Code Coverage service finished]========="
-          
+                  
       - name: Run DynamoRIO (Memtrace)
         run: |
           #!/bin/bash
@@ -197,5 +158,5 @@ jobs:
       - name: Upload DynamoRIO aggregated reports
         uses: actions/upload-artifact@v4
         with:
-          name: dynamoRIO-aggregated-reports-${{ github.event.repository.name }}-on-${{ matrix.os }}-under-${{ matrix.arch }}
+          name: dynamoRIO-aggregated-reports-${{ github.event.repository.name }}-on-${{ matrix.os }}-under-${{ matrix.arch }}-from_branch_${{ github.ref_name }}
           path: './dynamoriologs/*'
