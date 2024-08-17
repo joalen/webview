@@ -85,7 +85,7 @@ jobs:
             local executable="$1"
             local base_name=$(basename "$executable")
             # Run the various DynamoRIO tools and save the logs
-            timeout -k 15 60 $DYNAMORIO_HOME/bin64/drrun -t drmemtrace -- "$executable" > "${LOG_DIR}/${base_name}-TLB.log" 2>&1
+            timeout -k 15 60 $DYNAMORIO_HOME/bin64/drrun -t drmemtrace -- "$executable" > "${LOG_DIR}/${base_name}-cachesim.log" 2>&1
             timeout -k 15 60 $DYNAMORIO_HOME/bin64/drrun -t drmemtrace -tool TLB -- "$executable" > "${LOG_DIR}/${base_name}-TLB.log" 2>&1
             timeout -k 15 60 $DYNAMORIO_HOME/bin64/drrun -t drmemtrace -tool reuse_distance -reuse_distance_histogram -- "$executable" > "${LOG_DIR}/${base_name}-reuse_dist.log" 2>&1
             timeout -k 15 60 $DYNAMORIO_HOME/bin64/drrun -t drmemtrace -tool reuse_time -- "$executable" > "${LOG_DIR}/${base_name}-reuse_time.log" 2>&1
